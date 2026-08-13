@@ -1,0 +1,78 @@
+<h2>Детская главная — два визуальных направления</h2>
+<p class="subtitle">Одинаковая структура (поиск + сетка видео + остаток времени), разный стиль. Какой ближе? Кликните вариант.</p>
+
+<div class="cards" data-multiselect>
+  <div class="card" data-choice="playful" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden">
+      <div style="background:#fef3c7;padding:14px;font-family:sans-serif">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:34px;height:34px;border-radius:12px;background:#f97316;display:flex;align-items:center;justify-content:center;font-size:18px">🦊</div>
+          <div style="flex:1;background:#fff;border-radius:20px;padding:7px 12px;color:#9ca3af;font-size:12px">🔍 Что посмотрим?</div>
+          <div style="background:#22c55e;color:#fff;border-radius:20px;padding:6px 10px;font-size:11px;font-weight:700">⏱ 25 мин</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#fff;border-radius:14px;padding:6px">
+            <div style="background:#fdba74;border-radius:10px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">🚜</div>
+            <div style="font-size:11px;font-weight:700;margin-top:5px;color:#1f2937">Синий трактор</div>
+          </div>
+          <div style="background:#fff;border-radius:14px;padding:6px">
+            <div style="background:#93c5fd;border-radius:10px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">🐾</div>
+            <div style="font-size:11px;font-weight:700;margin-top:5px;color:#1f2937">Про животных</div>
+          </div>
+          <div style="background:#fff;border-radius:14px;padding:6px">
+            <div style="background:#c4b5fd;border-radius:10px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">🚀</div>
+            <div style="font-size:11px;font-weight:700;margin-top:5px;color:#1f2937">Космос</div>
+          </div>
+          <div style="background:#fff;border-radius:14px;padding:6px">
+            <div style="background:#86efac;border-radius:10px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">🎨</div>
+            <div style="font-size:11px;font-weight:700;margin-top:5px;color:#1f2937">Рисуем сами</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Детский стиль</h3>
+      <p>Крупные скруглённые карточки, яркие цвета, дружелюбный маскот. Крупные тач-цели под маленькие пальцы.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="cleanyt" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden">
+      <div style="background:#ffffff;padding:14px;font-family:sans-serif">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="font-weight:800;color:#ef4444;font-size:15px">SelfTube</div>
+          <div style="flex:1;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:7px 12px;color:#9ca3af;font-size:12px">Поиск</div>
+          <div style="border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:11px;color:#374151">⏱ 25 мин</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="background:#e5e7eb;border-radius:8px;height:56px"></div>
+            <div style="font-size:11px;font-weight:600;margin-top:5px;color:#111827">Синий трактор — сборник</div>
+            <div style="font-size:10px;color:#6b7280">Канал для детей</div>
+          </div>
+          <div>
+            <div style="background:#e5e7eb;border-radius:8px;height:56px"></div>
+            <div style="font-size:11px;font-weight:600;margin-top:5px;color:#111827">Мир животных</div>
+            <div style="font-size:10px;color:#6b7280">Природа</div>
+          </div>
+          <div>
+            <div style="background:#e5e7eb;border-radius:8px;height:56px"></div>
+            <div style="font-size:11px;font-weight:600;margin-top:5px;color:#111827">Космос для детей</div>
+            <div style="font-size:10px;color:#6b7280">Наука</div>
+          </div>
+          <div>
+            <div style="background:#e5e7eb;border-radius:8px;height:56px"></div>
+            <div style="font-size:11px;font-weight:600;margin-top:5px;color:#111827">Уроки рисования</div>
+            <div style="font-size:10px;color:#6b7280">Творчество</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Чистый YouTube-стиль</h3>
+      <p>Привычная сетка «как в YouTube/Rutube»: обложка, заголовок, название канала. Нейтрально, лаконично.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">Можно выбрать один или сказать словами, что нравится/не нравится. Структура (поиск сверху, остаток времени справа, сетка карточек) в обоих одинаковая.</p>

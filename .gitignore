@@ -8,4 +8,7 @@ yarn-error.log*
 /.pnp
 .pnp.js
 
-.vscode/*
+.vscode/*.superpowers/
+
+.idea/
+.DS_Store
