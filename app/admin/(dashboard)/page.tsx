@@ -1,7 +1,7 @@
 import { requireParent } from '@/lib/session'
 import { listAdminChannels, listAdminManualVideos } from '@/domain/catalog/catalog-service'
-import { addByUrl, syncNow, hideVideoAction, deleteChannelAction } from './actions'
-import { AddForm } from './AddForm'
+import { addByUrl, syncNow, hideVideoAction, deleteChannelAction } from '../actions'
+import { AddForm } from '../AddForm'
 
 export default async function AdminCatalog() {
   const parent = await requireParent()
