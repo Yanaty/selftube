@@ -4,7 +4,15 @@ import { startScheduler } from '@/lib/scheduler'
 
 if (typeof window === 'undefined') startScheduler()
 
-export const metadata = { title: 'SelfTube', description: 'Видео для детей' }
+export const metadata = {
+  title: 'SelfTube',
+  description: 'Видео для детей',
+  manifest: '/manifest.webmanifest',
+}
+
+export const viewport = {
+  themeColor: '#f97316',
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
