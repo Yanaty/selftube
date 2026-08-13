@@ -8,7 +8,16 @@ yarn-error.log*
 /.pnp
 .pnp.js
 
-.vscode/*.superpowers/
+.vscode/*
+.superpowers/
 
 .idea/
 .DS_Store
+
+# next.js
+/.next/
+/out/
+
+# env & local db
+.env
+*.db
