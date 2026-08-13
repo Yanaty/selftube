@@ -147,3 +147,44 @@ Session            id, parentId, expiresAt
 6. Детская часть: главная, поиск, интеграция «Безопасного плеера».
 7. `TimeLimitService` + пульс + блокировка.
 8. PWA-обёртка, финальная проверка изоляции.
+
+## Результат спайка плеера
+
+Реализованы `src/components/SafePlayer/SafePlayer.tsx` (использует чистую машину рукопожатия из `handshake.ts`, fail-closed при таймауте 4с) и временная страница `app/spike/page.tsx` для ручной проверки.
+
+### Реальный Rutube postMessage API (проверено 2026-08-13)
+
+Конверт: `iframe.contentWindow.postMessage(JSON.stringify({ type: 'player:<name>', data: {} }), '*')`. События приходят как JSON-строка в `event.data`.
+
+**События от плеера:**
+- `player:ready` — плеер загружен и готов (один раз). Используем как сигнал рукопожатия (`onPlayerReady`).
+- `player:changeState` — смена состояния воспроизведения; `data.state === 'playing'` или `'pause'`. ВАЖНО: значение паузы — строка `"pause"`, НЕ `"paused"` (в исходном черновике было `"paused"` — исправлено).
+- `player:playComplete` — видео (и реклама) закончились. Драйвит `onEnded()` → экран «Видео закончилось».
+- `player:currentTime` — периодическое обновление времени, `data.time` в секундах (float). Используем для перемотки назад на 10с.
+
+**Команды плееру:**
+- `player:play` — `data: {}`
+- `player:pause` — `data: {}`
+- `player:mute` — `data: {}`
+- `player:setCurrentTime` — `data: { time: <секунды> }` (абсолютная перемотка). В исходном черновике команда отправлялась с пустым `data` (перемотка «в никуда»/NaN) — исправлено: считаем текущее время из `player:currentTime` и перематываем на -10с.
+
+Источники: github.com/evikza/Rutube-Player-JS-API-Doc, github.com/evikza/rutube-player, github.com/bilouw/vue-rutube, rutube.ru/info/embed/.
+
+### Выбор по сигналу готовности
+
+Rutube отдаёт отдельное событие `player:ready` — привязали к нему `onPlayerReady`. Дополнительно (защита) считаем готовностью и первое `player:changeState`: любой ответ плеера доказывает, что он жив и слушает API — этого достаточно для fail-closed рукопожатия. Так плеер не будет ошибочно заблокирован, если конкретная сборка плеера пропустит/задержит `player:ready`.
+
+### Проверено автоматически
+
+- `npx tsc --noEmit` — чисто.
+- `npm run build` (Next prod) — успешно, маршрут `/spike` пререндерится.
+- В пререндеренном HTML (`.next/server/app/spike.html`) подтверждён атрибут `sandbox="allow-scripts allow-same-origin"` (без `allow-popups`/`allow-top-navigation`) — ядро безопасности на месте.
+- Реальный публичный ID видео (мультик «Малышарики») подставлен в спайк: `973c0551b5fd94fc1e2107e249e60786`.
+
+### Требует ручной проверки человеком (живой браузер + реальное видео)
+
+- Кнопка play/pause через наш контрол реально управляет воспроизведением (postMessage `player:play`/`player:pause`).
+- Тап по области плеера (прозрачный слой) НЕ уводит со страницы и НЕ открывает новую вкладку; логотип/«похожие»/ссылки Rutube недоступны.
+- По окончании видео срабатывает `onEnded` (событие `player:playComplete`).
+- Битый/приватный ID → в течение 4с показывается «Видео временно недоступно» (fail-closed).
+- Событийные имена `player:ready` / `player:playComplete` / `player:changeState` (`state: 'playing'|'pause'`) подтверждены по сообществу/врапперам, но НЕ проверены на живом плеере — сверить в реальном браузере через `window.addEventListener('message', ...)`.
