@@ -1,5 +1,6 @@
 import { db } from './db'
 import bcrypt from 'bcryptjs'
+import { SESSION_COOKIE } from './auth-constants'
 
 const SESSION_TTL_DAYS = 30
 
@@ -31,4 +32,4 @@ export async function destroySession(token: string) {
   await db.session.deleteMany({ where: { id: token } })
 }
 
-export const SESSION_COOKIE = 'selftube_session'
+export { SESSION_COOKIE }
