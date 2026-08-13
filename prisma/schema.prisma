@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  parents   Parent[]
+  channels  Channel[]
+  videos    Video[]
+  setting   Setting?
+  usage     DailyUsage[]
+}
+
+model Parent {
+  id           String    @id @default(cuid())
+  accountId    String
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  account      Account   @relation(fields: [accountId], references: [id])
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  parentId  String
+  expiresAt DateTime
+  parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+}
+
+model Channel {
+  id                String   @id @default(cuid())
+  accountId         String
+  platform          String
+  platformChannelId String
+  title             String
+  thumbnailUrl      String
+  enabled           Boolean  @default(true)
+  lastSyncedAt      DateTime?
+  addedAt           DateTime @default(now())
+  account           Account  @relation(fields: [accountId], references: [id])
+  videos            Video[]
+  @@unique([accountId, platform, platformChannelId])
+}
+
+model Video {
+  id              String   @id @default(cuid())
+  accountId       String
+  platform        String
+  platformVideoId String
+  title           String
+  thumbnailUrl    String
+  durationSec     Int
+  embedUrl        String
+  sourceType      String
+  channelId       String?
+  hidden          Boolean  @default(false)
+  publishedAt     DateTime?
+  addedAt         DateTime @default(now())
+  account         Account  @relation(fields: [accountId], references: [id])
+  channel         Channel? @relation(fields: [channelId], references: [id])
+  @@unique([accountId, platform, platformVideoId])
+}
+
+model Setting {
+  accountId         String  @id
+  dailyLimitMinutes Int?
+  account           Account @relation(fields: [accountId], references: [id])
+}
+
+model DailyUsage {
+  accountId      String
+  date           String
+  secondsWatched Int      @default(0)
+  account        Account  @relation(fields: [accountId], references: [id])
+  @@id([accountId, date])
+}
