@@ -4,6 +4,8 @@ import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
-  test: { environment: 'jsdom', globals: true },
+  // fileParallelism отключён: интеграционные тесты пишут в один SQLite-файл (dev.db),
+  // параллельные воркеры вызывали бы блокировки (SQLITE_BUSY). Тесты идут последовательно.
+  test: { environment: 'jsdom', globals: true, fileParallelism: false },
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
 })
