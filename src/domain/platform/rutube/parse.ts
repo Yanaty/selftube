@@ -2,9 +2,18 @@ import type { PlatformVideo } from '../types'
 
 export type ParsedRutube = { kind: 'video' | 'channel'; id: string } | null
 
+// Родители копируют ссылку по-разному: из адресной строки (со схемой) или руками
+// («rutube.ru/channel/123»). Второй вариант браузер дополняет сам, дополним и мы.
+function toUrl(input: string): URL | null {
+  const raw = input.trim()
+  if (raw.length === 0) return null
+  try { return new URL(raw) } catch {}
+  try { return new URL(`https://${raw}`) } catch { return null }
+}
+
 export function parseRutubeUrl(input: string): ParsedRutube {
-  let url: URL
-  try { url = new URL(input) } catch { return null }
+  const url = toUrl(input)
+  if (!url) return null
   if (!/(^|\.)rutube\.ru$/.test(url.hostname)) return null
   const parts = url.pathname.split('/').filter(Boolean)
   if (parts[0] === 'video' && parts[1]) return { kind: 'video', id: parts[1] }
