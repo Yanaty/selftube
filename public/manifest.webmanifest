@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "SelfTube — видео для детей",
-  "short_name": "SelfTube",
-  "description": "Видео для детей — только то, что одобрил родитель",
+  "name": "Мультики",
+  "short_name": "Мультики",
+  "description": "Мультики для детей — только то, что одобрил родитель",
   "lang": "ru",
   "start_url": "/",
   "scope": "/",
@@ -14,13 +14,13 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

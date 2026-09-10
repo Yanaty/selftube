@@ -6,14 +6,14 @@ import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker'
 if (typeof window === 'undefined') startScheduler()
 
 export const metadata = {
-  title: 'SelfTube',
-  applicationName: 'SelfTube',
-  description: 'Видео для детей — только то, что одобрил родитель',
+  title: 'Мультики',
+  applicationName: 'Мультики',
+  description: 'Мультики для детей — только то, что одобрил родитель',
   manifest: '/manifest.webmanifest',
   icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
   // iOS не умеет prompt на установку, но с этими тегами «На экран Домой» открывает
   // приложение без адресной строки — как отдельную аппку.
-  appleWebApp: { capable: true, title: 'SelfTube', statusBarStyle: 'default' as const },
+  appleWebApp: { capable: true, title: 'Мультики', statusBarStyle: 'default' as const },
 }
 
 export const viewport = {
