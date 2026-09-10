@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/lib/db'
 import {
   addVideoByUrl, addSourceByUrl, listChildCatalog, hideVideo, deleteChannel,
+  listChildCatalogPage,
 } from './catalog-service'
 import { RutubeAdapter } from '@/domain/platform/rutube/adapter'
 
@@ -110,5 +111,62 @@ describe('CatalogService', () => {
     const ch = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter)
     await deleteChannel(ACC, ch.id)
     expect(await listChildCatalog(ACC)).toHaveLength(0)
+  })
+})
+
+describe('listChildCatalogPage', () => {
+  async function seedVideos(n: number) {
+    for (let i = 0; i < n; i++) {
+      await db.video.create({
+        data: {
+          accountId: ACC, platform: 'RUTUBE', platformVideoId: 'v' + i,
+          title: 'Видео ' + i, thumbnailUrl: 't', durationSec: 10,
+          embedUrl: 'e', sourceType: 'MANUAL',
+        },
+      })
+    }
+  }
+
+  it('отдаёт страницу и общее число видео', async () => {
+    await seedVideos(25)
+    const page = await listChildCatalogPage(ACC, { seed: 1, offset: 0, limit: 10 })
+    expect(page.items).toHaveLength(10)
+    expect(page.total).toBe(25)
+  })
+
+  it('страницы одного зерна не дублируют и не теряют видео', async () => {
+    await seedVideos(25)
+    const first = await listChildCatalogPage(ACC, { seed: 777, offset: 0, limit: 10 })
+    const second = await listChildCatalogPage(ACC, { seed: 777, offset: 10, limit: 10 })
+    const third = await listChildCatalogPage(ACC, { seed: 777, offset: 20, limit: 10 })
+    const ids = [...first.items, ...second.items, ...third.items].map((v) => v.id)
+    expect(ids).toHaveLength(25)
+    expect(new Set(ids).size).toBe(25)
+  })
+
+  it('разные зёрна дают разный порядок', async () => {
+    await seedVideos(25)
+    const a = await listChildCatalogPage(ACC, { seed: 1, offset: 0, limit: 25 })
+    const b = await listChildCatalogPage(ACC, { seed: 2, offset: 0, limit: 25 })
+    expect(a.items.map((v) => v.id)).not.toEqual(b.items.map((v) => v.id))
+  })
+
+  it('с запросом отдаёт только подходящие и не перемешивает их', async () => {
+    await seedVideos(25)
+    const page = await listChildCatalogPage(ACC, { seed: 1, offset: 0, limit: 50, query: 'Видео 1' })
+    // «Видео 1», «Видео 10»…«Видео 19» — 11 штук
+    expect(page.total).toBe(11)
+    expect(page.items).toHaveLength(11)
+    const again = await listChildCatalogPage(ACC, { seed: 99, offset: 0, limit: 50, query: 'Видео 1' })
+    expect(again.items.map((v) => v.id)).toEqual(page.items.map((v) => v.id))
+  })
+
+  it('скрытое видео не попадает на страницу', async () => {
+    await seedVideos(3)
+    const all = await listChildCatalog(ACC)
+    await hideVideo(ACC, all[0].id)
+    const page = await listChildCatalogPage(ACC, { seed: 1, offset: 0, limit: 10 })
+    expect(page.total).toBe(2)
+    expect(page.items.map((v) => v.id)).not.toContain(all[0].id)
   })
 })

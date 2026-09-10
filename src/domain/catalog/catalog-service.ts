@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 import type { PlatformAdapter, PlatformVideo } from '@/domain/platform/types'
 import { isVisibleToChild } from './visibility'
+import { shuffle } from './shuffle'
+import { seededRng } from './rng'
 
 async function upsertVideo(
   accountId: string, v: PlatformVideo,
@@ -70,6 +72,31 @@ export async function searchChildCatalog(accountId: string, query: string) {
   const q = query.trim().toLowerCase()
   if (!q) return all
   return all.filter((v) => v.title.toLowerCase().includes(q))
+}
+
+/**
+ * Страница детского каталога. Каталог вырастает до тысяч видео, а отдавать их все
+ * на клиент — это и тяжёлый payload страницы, и тысячи карточек в DOM.
+ *
+ * Порядок случайный, но зерно приходит от клиента: пока ребёнок жмёт «Ещё»,
+ * перемешивание обязано остаться тем же, иначе одни видео придут дважды, а другие
+ * не придут вовсе. Результаты поиска не перемешиваются — там важнее свой порядок.
+ */
+export async function listChildCatalogPage(
+  accountId: string,
+  { seed, offset, limit, query = '' }: { seed: number; offset: number; limit: number; query?: string },
+) {
+  const trimmed = query.trim()
+  const all = trimmed ? await searchChildCatalog(accountId, trimmed) : await listChildCatalog(accountId)
+  const ordered = trimmed ? all : shuffle(all, seededRng(seed))
+  return {
+    total: all.length,
+    items: ordered.slice(offset, offset + limit).map((v) => ({
+      id: v.id,
+      title: v.title,
+      thumbnailUrl: v.thumbnailUrl,
+    })),
+  }
 }
 
 export async function hideVideo(accountId: string, videoId: string) {

@@ -1,26 +1,40 @@
 import { getCurrentAccountId } from '@/lib/account'
-import { searchChildCatalog } from '@/domain/catalog/catalog-service'
+import { listChildCatalogPage } from '@/domain/catalog/catalog-service'
+import { randomSeed } from '@/domain/catalog/rng'
 import { getStatus } from '@/domain/timelimit/timelimit-service'
 import { KidsHeader } from '@/components/kids/KidsHeader'
-import { VideoCard } from '@/components/kids/VideoCard'
 import { KidsContainer } from '@/components/kids/KidsContainer'
+import { KidsGrid } from '@/components/kids/KidsGrid'
+import { loadMoreVideos } from '../actions'
 
 export const dynamic = 'force-dynamic'
+
+const PAGE_SIZE = 60
 
 export default async function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
   const accountId = await getCurrentAccountId()
   const q = searchParams.q ?? ''
-  const [videos, status] = await Promise.all([searchChildCatalog(accountId, q), getStatus(accountId)])
+  const seed = randomSeed()
+  const [page, status] = await Promise.all([
+    listChildCatalogPage(accountId, { seed, offset: 0, limit: PAGE_SIZE, query: q }),
+    getStatus(accountId),
+  ])
   const remMin = status.dailyLimitMinutes === null ? null : Math.ceil(status.remainingSeconds / 60)
   return (
     <div>
       <KidsHeader remainingMinutes={remMin} />
       <KidsContainer className="pt-3">
-        <p className="text-sm text-gray-600">Результаты по запросу «{q}»: {videos.length}</p>
+        <p className="text-sm text-gray-600">Результаты по запросу «{q}»: {page.total}</p>
       </KidsContainer>
-      <KidsContainer className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-3 sm:gap-4 sm:py-4 xl:grid-cols-4 2xl:grid-cols-5">
-        {videos.map((v) => <VideoCard key={v.id} id={v.id} title={v.title} thumbnailUrl={v.thumbnailUrl} />)}
-      </KidsContainer>
+      <KidsGrid
+        initial={page.items}
+        total={page.total}
+        seed={seed}
+        pageSize={PAGE_SIZE}
+        query={q}
+        loadMoreVideos={loadMoreVideos}
+        emptyMessage="Ничего не нашлось. Попробуй другое слово 🙂"
+      />
     </div>
   )
 }
