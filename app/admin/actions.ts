@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireParent } from '@/lib/session'
 import { adapterForUrl, adapterForPlatform } from '@/domain/platform/registry'
-import { addVideoByUrl, addSourceByUrl, hideVideo, deleteChannel } from '@/domain/catalog/catalog-service'
+import { addVideoByUrl, addSourceByUrl, setVideoHidden, deleteManualVideo, deleteChannel } from '@/domain/catalog/catalog-service'
 import { syncAllChannels } from '@/domain/sync/sync-service'
 
 export async function addByUrl(_prev: unknown, formData: FormData) {
@@ -28,9 +28,15 @@ export async function syncNow() {
   revalidatePath('/admin')
 }
 
-export async function hideVideoAction(formData: FormData) {
+export async function setVideoHiddenAction(formData: FormData) {
   const parent = await requireParent()
-  await hideVideo(parent.accountId, String(formData.get('videoId')))
+  await setVideoHidden(parent.accountId, String(formData.get('videoId')), formData.get('hidden') === '1')
+  revalidatePath('/admin')
+}
+
+export async function deleteManualVideoAction(formData: FormData) {
+  const parent = await requireParent()
+  await deleteManualVideo(parent.accountId, String(formData.get('videoId')))
   revalidatePath('/admin')
 }
 

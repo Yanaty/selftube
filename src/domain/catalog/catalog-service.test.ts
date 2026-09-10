@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '@/lib/db'
 import {
   addVideoByUrl, addSourceByUrl, listChildCatalog, hideVideo, deleteChannel,
-  listChildCatalogPage,
+  listChildCatalogPage, setVideoHidden, deleteManualVideo, listAdminManualVideos,
 } from './catalog-service'
 import { RutubeAdapter } from '@/domain/platform/rutube/adapter'
 
@@ -168,5 +168,56 @@ describe('listChildCatalogPage', () => {
     const page = await listChildCatalogPage(ACC, { seed: 1, offset: 0, limit: 10 })
     expect(page.total).toBe(2)
     expect(page.items.map((v) => v.id)).not.toContain(all[0].id)
+  })
+})
+
+describe('setVideoHidden — скрыть и вернуть обратно', () => {
+  async function manualVideo() {
+    const adapter = fakeAdapter({
+      'https://rutube.ru/api/video/v9/': { id: 'v9', title: 'Монстр-трак', duration: 10, thumbnail_url: 't' },
+    })
+    return addVideoByUrl(ACC, 'https://rutube.ru/video/v9/', adapter)
+  }
+
+  it('скрытое возвращается в детский каталог, когда родитель передумал', async () => {
+    const v = await manualVideo()
+    await setVideoHidden(ACC, v.id, true)
+    expect(await listChildCatalog(ACC)).toHaveLength(0)
+
+    await setVideoHidden(ACC, v.id, false)
+    expect((await listChildCatalog(ACC)).map((x) => x.id)).toEqual([v.id])
+  })
+
+  it('скрытое видео остаётся в админском списке — родителю нужно видеть, что он спрятал', async () => {
+    const v = await manualVideo()
+    await setVideoHidden(ACC, v.id, true)
+    const admin = await listAdminManualVideos(ACC)
+    expect(admin.map((x) => x.id)).toContain(v.id)
+    expect(admin.find((x) => x.id === v.id)!.hidden).toBe(true)
+  })
+})
+
+describe('deleteManualVideo', () => {
+  it('удаляет видео, добавленное вручную', async () => {
+    const adapter = fakeAdapter({
+      'https://rutube.ru/api/video/v9/': { id: 'v9', title: 'X', duration: 10, thumbnail_url: 't' },
+    })
+    const v = await addVideoByUrl(ACC, 'https://rutube.ru/video/v9/', adapter)
+    await deleteManualVideo(ACC, v.id)
+    expect(await listAdminManualVideos(ACC)).toHaveLength(0)
+  })
+
+  it('не трогает видео из источника — синхронизация всё равно вернула бы его', async () => {
+    const adapter = fakeAdapter({
+      'https://rutube.ru/api/video/person/777/?page=1': {
+        results: [{ id: 'a', title: 'A', duration: 1, thumbnail_url: 't', author: { id: 777, name: 'K' } }],
+        has_next: false,
+      },
+    })
+    await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter)
+    const [fromChannel] = await listChildCatalog(ACC)
+
+    await expect(deleteManualVideo(ACC, fromChannel.id)).rejects.toThrow()
+    expect(await listChildCatalog(ACC)).toHaveLength(1)
   })
 })

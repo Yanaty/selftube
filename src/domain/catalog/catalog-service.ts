@@ -99,8 +99,31 @@ export async function listChildCatalogPage(
   }
 }
 
+/**
+ * Скрыть или вернуть видео. Скрытие — основной инструмент для видео из каналов и
+ * плейлистов: удалять их бессмысленно, ближайшая синхронизация скачает их заново,
+ * а флаг hidden синк не трогает намеренно.
+ */
+export async function setVideoHidden(accountId: string, videoId: string, hidden: boolean) {
+  await db.video.updateMany({ where: { id: videoId, accountId }, data: { hidden } })
+}
+
 export async function hideVideo(accountId: string, videoId: string) {
-  await db.video.updateMany({ where: { id: videoId, accountId }, data: { hidden: true } })
+  await setVideoHidden(accountId, videoId, true)
+}
+
+/**
+ * Удаляет видео, добавленное вручную. Для видео из источника удаление запрещено:
+ * оно вернулось бы при следующей синхронизации, и родитель решил бы, что фильтр
+ * не работает. Для них есть скрытие.
+ */
+export async function deleteManualVideo(accountId: string, videoId: string) {
+  const video = await db.video.findFirst({ where: { id: videoId, accountId } })
+  if (!video) throw new Error('Видео не найдено')
+  if (video.sourceType !== 'MANUAL') {
+    throw new Error('Это видео из канала или плейлиста — его можно только скрыть')
+  }
+  await db.video.delete({ where: { id: video.id } })
 }
 
 export async function listAdminChannels(accountId: string) {
