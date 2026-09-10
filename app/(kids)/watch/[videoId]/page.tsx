@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { db } from '@/lib/db'
 import { getCurrentAccountId } from '@/lib/account'
 import { listChildCatalog } from '@/domain/catalog/catalog-service'
+import { pickRelated } from '@/domain/catalog/related'
 import { isVisibleToChild } from '@/domain/catalog/visibility'
 import { getStatus } from '@/domain/timelimit/timelimit-service'
 import { WatchClient } from './WatchClient'
@@ -25,7 +26,9 @@ export default async function WatchPage({ params }: { params: { videoId: string 
   }
 
   const [catalog, status] = await Promise.all([listChildCatalog(accountId), getStatus(accountId)])
-  const suggestions = catalog.filter((v) => v.id !== video.id).slice(0, 6)
+  // Похожее по словам названия, добитое случайными: после серии мультсериала
+  // логичнее предложить его же продолжение, а не последнее добавленное видео.
+  const suggestions = pickRelated(video, catalog, 6)
     .map((v) => ({ id: v.id, title: v.title, thumbnailUrl: v.thumbnailUrl }))
 
   return (
