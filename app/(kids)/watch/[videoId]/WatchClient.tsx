@@ -20,7 +20,7 @@ export function WatchClient({ embedUrl, durationSec, suggestions, initiallyBlock
 
   if (blocked) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-amber-50 p-6 text-center">
+      <div className="pattern-kids flex min-h-screen flex-col items-center justify-center p-6 text-center">
         <div className="text-2xl font-extrabold text-gray-800">На сегодня всё! ⏰</div>
         <p className="mt-2 text-gray-600">Время просмотра на сегодня закончилось.</p>
       </div>
@@ -28,7 +28,10 @@ export function WatchClient({ embedUrl, durationSec, suggestions, initiallyBlock
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-3">
+    // Мультяшный фон с приглушёнными траками — экран просмотра единственный, где
+    // вокруг видео много пустого места.
+    <div className="pattern-kids min-h-screen">
+      <div className="mx-auto max-w-3xl p-3">
       <button onClick={() => router.push('/')} className="mb-3 rounded-full bg-white px-4 py-1.5 text-sm font-bold shadow">‹ Назад</button>
       {!ended ? (
         <SafePlayer embedUrl={embedUrl} durationSec={durationSec} onEnded={() => setEnded(true)} onTick={onTick} />
@@ -48,6 +51,7 @@ export function WatchClient({ embedUrl, durationSec, suggestions, initiallyBlock
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

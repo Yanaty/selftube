@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Мультяшный фон детских экранов: приглушённые монстр-траки и шарики — тот же
+ * герой, что на иконке приложения. Тайл 140×140, все фигуры целиком внутри тайла,
+ * поэтому стыков не видно. Прозрачность низкая: фон не должен спорить с видео.
+ */
+.pattern-kids {
+  background-color: #fffbeb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%23f59e0b' fill-opacity='0.13'%3E%3Crect x='12' y='26' width='46' height='16' rx='5'/%3E%3Crect x='40' y='15' width='24' height='27' rx='7'/%3E%3Ccircle cx='24' cy='48' r='11'/%3E%3Ccircle cx='56' cy='48' r='11'/%3E%3Ccircle cx='104' cy='28' r='9'/%3E%3Ccircle cx='124' cy='56' r='5'/%3E%3Crect x='78' y='92' width='42' height='15' rx='5'/%3E%3Crect x='102' y='83' width='21' height='24' rx='6'/%3E%3Ccircle cx='89' cy='113' r='10'/%3E%3Ccircle cx='117' cy='113' r='10'/%3E%3Ccircle cx='32' cy='102' r='8'/%3E%3Ccircle cx='55' cy='124' r='5'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
