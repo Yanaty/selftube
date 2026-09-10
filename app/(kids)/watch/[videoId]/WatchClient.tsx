@@ -38,7 +38,7 @@ export function WatchClient({ embedUrl, durationSec, suggestions, initiallyBlock
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {suggestions.map((s) => (
               <button key={s.id} onClick={() => router.push(`/watch/${s.id}`)} className="rounded-2xl bg-white p-1.5 text-left shadow">
-                <img src={s.thumbnailUrl} alt="" className="h-20 w-full rounded-xl object-cover" />
+                <img src={s.thumbnailUrl} alt="" className="aspect-video w-full rounded-xl bg-amber-50 object-cover" />
                 <div className="mt-1 line-clamp-2 px-1 text-xs font-bold">{s.title}</div>
               </button>
             ))}

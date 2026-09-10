@@ -21,7 +21,7 @@ export default async function AdminCatalog() {
         <div className="divide-y rounded-xl border bg-white">
           {channels.length === 0 ? <p className="p-3 text-sm text-gray-400">Пока нет каналов и плейлистов</p> : channels.map((c) => (
             <div key={c.id} className="flex items-center gap-3 p-3">
-              <img src={c.thumbnailUrl || '/placeholder.png'} alt="" className="h-10 w-10 rounded-lg object-cover" />
+              <img src={c.thumbnailUrl || '/placeholder.png'} alt="" className="h-12 w-20 rounded-lg bg-gray-100 object-cover" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold">{c.title}</span>
@@ -39,11 +39,12 @@ export default async function AdminCatalog() {
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase text-gray-500">Отдельные видео</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {videos.map((v) => (
             <div key={v.id} className="rounded-xl border bg-white p-2">
-              <img src={v.thumbnailUrl} alt="" className="h-24 w-full rounded-lg object-cover" />
-              <div className="mt-1 text-xs font-semibold">{v.title}</div>
+              {/* 16:9 вместо фиксированной высоты — превью растёт вместе с карточкой. */}
+              <img src={v.thumbnailUrl} alt="" className="aspect-video w-full rounded-lg bg-gray-100 object-cover" />
+              <div className="mt-1 line-clamp-2 text-xs font-semibold">{v.title}</div>
               <form action={hideVideoAction}><input type="hidden" name="videoId" value={v.id} /><button className="mt-1 text-xs text-red-600">Скрыть</button></form>
             </div>
           ))}
