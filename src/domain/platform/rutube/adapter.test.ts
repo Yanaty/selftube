@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { RutubeAdapter } from './adapter'
 
 function fakeFetch(routes: Record<string, unknown>) {
-  return async (url: string) => {
+  return async (url: string, _init?: unknown) => {
     const body = routes[url]
     if (body === undefined) return { ok: false, status: 404, json: async () => ({}) } as any
     return { ok: true, status: 200, json: async () => body } as any
@@ -35,7 +35,23 @@ describe('RutubeAdapter', () => {
       },
     }))
     const res = await a.resolve('https://rutube.ru/channel/777/')
-    expect(res).toMatchObject({ kind: 'channel', channel: { platformChannelId: '777', title: 'Канал X' } })
+    expect(res).toMatchObject({
+      kind: 'source',
+      source: { kind: 'CHANNEL', platformSourceId: '777', title: 'Канал X' },
+    })
+  })
+
+  it('resolve плейлиста берёт название из api/playlist/custom/{id}/', async () => {
+    const a = new RutubeAdapter(fakeFetch({
+      'https://rutube.ru/api/playlist/custom/1442688/?client=wdp': {
+        id: 1442688, title: 'Щенячий патруль', thumbnail_url: 'pl.jpg',
+      },
+    }))
+    const res = await a.resolve('https://rutube.ru/plst/1442688/')
+    expect(res).toMatchObject({
+      kind: 'source',
+      source: { kind: 'PLAYLIST', platformSourceId: '1442688', title: 'Щенячий патруль', thumbnailUrl: 'pl.jpg' },
+    })
   })
 
   it('listChannelVideos проходит пагинацию', async () => {
@@ -47,8 +63,32 @@ describe('RutubeAdapter', () => {
         results: [{ id: 'v2', title: 'B', duration: 2, thumbnail_url: 't' }], has_next: false,
       },
     }))
-    const list = await a.listChannelVideos('777')
+    const list = await a.listSourceVideos('CHANNEL', '777')
     expect(list.map((v) => v.platformVideoId)).toEqual(['v1', 'v2'])
+  })
+
+  it('listSourceVideos для плейлиста ходит в playlist-эндпоинт и склеивает страницы', async () => {
+    const a = new RutubeAdapter(fakeFetch({
+      'https://rutube.ru/api/playlist/custom/1442688/videos/?client=wdp&page=1': {
+        results: [{ id: 'p1', title: 'Серия 1', duration: 1380, thumbnail_url: 't' }], has_next: true,
+      },
+      'https://rutube.ru/api/playlist/custom/1442688/videos/?client=wdp&page=2': {
+        results: [{ id: 'p2', title: 'Серия 2', duration: 1300, thumbnail_url: 't' }], has_next: false,
+      },
+    }))
+    const list = await a.listSourceVideos('PLAYLIST', '1442688')
+    expect(list.map((v) => v.platformVideoId)).toEqual(['p1', 'p2'])
+    expect(list[0].embedUrl).toBe('https://rutube.ru/play/embed/p1')
+  })
+
+  it('представляется браузерным User-Agent — иначе Rutube отдаёт 403', async () => {
+    const seen: Array<{ url: string; init: any }> = []
+    const a = new RutubeAdapter(async (url: string, init?: any) => {
+      seen.push({ url, init })
+      return { ok: true, status: 200, json: async () => ({ id: 'abc', title: 'T', duration: 1, thumbnail_url: 't' }) } as any
+    })
+    await a.resolve('https://rutube.ru/video/abc/')
+    expect(String(seen[0].init?.headers?.['User-Agent'] ?? '')).toMatch(/Mozilla/)
   })
 
   it('resolve бросает для чужого URL', async () => {

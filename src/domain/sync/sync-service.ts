@@ -1,13 +1,13 @@
 import { db } from '@/lib/db'
-import type { PlatformAdapter } from '@/domain/platform/types'
+import type { PlatformAdapter, SourceKind } from '@/domain/platform/types'
 
-// Синхронизирует один канал: добавляет новые видео, обновляет метаданные,
-// НЕ трогает поле hidden у существующих (уважает решение родителя).
+// Синхронизирует один источник (канал или плейлист): добавляет новые видео,
+// обновляет метаданные, НЕ трогает поле hidden у существующих (уважает решение родителя).
 export async function syncChannel(accountId: string, channelId: string, adapter: PlatformAdapter) {
   const channel = await db.channel.findFirst({ where: { id: channelId, accountId } })
-  if (!channel) throw new Error('Канал не найден')
+  if (!channel) throw new Error('Источник не найден')
 
-  const videos = await adapter.listChannelVideos(channel.platformChannelId)
+  const videos = await adapter.listSourceVideos(channel.kind as SourceKind, channel.platformChannelId)
   for (const v of videos) {
     await db.video.upsert({
       where: { accountId_platform_platformVideoId: { accountId, platform: v.platform, platformVideoId: v.platformVideoId } },

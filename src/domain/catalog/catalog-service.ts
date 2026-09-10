@@ -19,22 +19,35 @@ async function upsertVideo(
 
 export async function addVideoByUrl(accountId: string, url: string, adapter: PlatformAdapter) {
   const res = await adapter.resolve(url)
-  if (res.kind !== 'video') throw new Error('Ссылка ведёт на канал, а не на видео')
+  if (res.kind !== 'video') throw new Error('Ссылка ведёт на канал или плейлист, а не на видео')
   return upsertVideo(accountId, res.video, 'MANUAL', null)
 }
 
-export async function addChannelByUrl(accountId: string, url: string, adapter: PlatformAdapter) {
+/**
+ * Добавляет источник целиком — канал или плейлист — и все его видео.
+ * Дальше источник живёт одинаково для обоих видов: синхронизируется, выключается,
+ * удаляется вместе со своими видео.
+ */
+export async function addSourceByUrl(accountId: string, url: string, adapter: PlatformAdapter) {
   const res = await adapter.resolve(url)
-  if (res.kind !== 'channel') throw new Error('Ссылка ведёт на видео, а не на канал')
-  const channel = await db.channel.upsert({
-    where: { accountId_platform_platformChannelId: { accountId, platform: res.channel.platform, platformChannelId: res.channel.platformChannelId } },
-    update: { title: res.channel.title, thumbnailUrl: res.channel.thumbnailUrl },
-    create: { accountId, platform: res.channel.platform, platformChannelId: res.channel.platformChannelId, title: res.channel.title, thumbnailUrl: res.channel.thumbnailUrl },
+  if (res.kind !== 'source') throw new Error('Ссылка ведёт на видео, а не на канал или плейлист')
+  const src = res.source
+  const source = await db.channel.upsert({
+    where: {
+      accountId_platform_kind_platformChannelId: {
+        accountId, platform: src.platform, kind: src.kind, platformChannelId: src.platformSourceId,
+      },
+    },
+    update: { title: src.title, thumbnailUrl: src.thumbnailUrl },
+    create: {
+      accountId, platform: src.platform, kind: src.kind,
+      platformChannelId: src.platformSourceId, title: src.title, thumbnailUrl: src.thumbnailUrl,
+    },
   })
-  const videos = await adapter.listChannelVideos(res.channel.platformChannelId)
-  for (const v of videos) await upsertVideo(accountId, v, 'CHANNEL', channel.id)
-  await db.channel.update({ where: { id: channel.id }, data: { lastSyncedAt: new Date() } })
-  return channel
+  const videos = await adapter.listSourceVideos(src.kind, src.platformSourceId)
+  for (const v of videos) await upsertVideo(accountId, v, 'CHANNEL', source.id)
+  await db.channel.update({ where: { id: source.id }, data: { lastSyncedAt: new Date() } })
+  return source
 }
 
 export async function listChildCatalog(accountId: string) {

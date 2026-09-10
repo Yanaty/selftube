@@ -33,10 +33,14 @@ model Session {
   parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
 }
 
+// Источник видео: канал или плейлист. Модель называется Channel по историческим
+// причинам (v1 знала только каналы); kind различает вид источника, а
+// platformChannelId хранит id канала ИЛИ плейлиста на платформе.
 model Channel {
   id                String   @id @default(cuid())
   accountId         String
   platform          String
+  kind              String   @default("CHANNEL") // CHANNEL | PLAYLIST
   platformChannelId String
   title             String
   thumbnailUrl      String
@@ -45,7 +49,9 @@ model Channel {
   addedAt           DateTime @default(now())
   account           Account  @relation(fields: [accountId], references: [id])
   videos            Video[]
-  @@unique([accountId, platform, platformChannelId])
+  // kind в ключе обязателен: id каналов и плейлистов числовые и живут в разных
+  // пространствах имён, канал 555 и плейлист 555 — разные источники.
+  @@unique([accountId, platform, kind, platformChannelId])
 }
 
 model Video {
@@ -57,7 +63,7 @@ model Video {
   thumbnailUrl    String
   durationSec     Int
   embedUrl        String
-  sourceType      String
+  sourceType      String   // MANUAL | CHANNEL (CHANNEL = пришло из источника: канала или плейлиста)
   channelId       String?
   hidden          Boolean  @default(false)
   publishedAt     DateTime?

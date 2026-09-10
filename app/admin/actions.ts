@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireParent } from '@/lib/session'
 import { adapterForUrl, adapterForPlatform } from '@/domain/platform/registry'
-import { addVideoByUrl, addChannelByUrl, hideVideo, deleteChannel } from '@/domain/catalog/catalog-service'
+import { addVideoByUrl, addSourceByUrl, hideVideo, deleteChannel } from '@/domain/catalog/catalog-service'
 import { syncAllChannels } from '@/domain/sync/sync-service'
 
 export async function addByUrl(_prev: unknown, formData: FormData) {
@@ -13,7 +13,7 @@ export async function addByUrl(_prev: unknown, formData: FormData) {
   try {
     const res = await adapter.resolve(url)
     if (res.kind === 'video') await addVideoByUrl(parent.accountId, url, adapter)
-    else await addChannelByUrl(parent.accountId, url, adapter)
+    else await addSourceByUrl(parent.accountId, url, adapter)
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Не удалось добавить ссылку' }
   }

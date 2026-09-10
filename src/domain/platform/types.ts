@@ -1,5 +1,8 @@
 export type Platform = 'RUTUBE'
 
+/** Вид источника: канал целиком или отдельный плейлист. */
+export type SourceKind = 'CHANNEL' | 'PLAYLIST'
+
 export type PlatformVideo = {
   platform: Platform
   platformVideoId: string
@@ -10,21 +13,22 @@ export type PlatformVideo = {
   publishedAt: Date | null
 }
 
-export type PlatformChannel = {
+export type PlatformSource = {
   platform: Platform
-  platformChannelId: string
+  kind: SourceKind
+  platformSourceId: string
   title: string
   thumbnailUrl: string
 }
 
 export type ResolvedLink =
   | { kind: 'video'; video: PlatformVideo }
-  | { kind: 'channel'; channel: PlatformChannel }
+  | { kind: 'source'; source: PlatformSource }
 
 export interface PlatformAdapter {
   readonly platform: Platform
   matches(url: string): boolean
   resolve(url: string): Promise<ResolvedLink>
-  listChannelVideos(platformChannelId: string): Promise<PlatformVideo[]>
+  listSourceVideos(kind: SourceKind, platformSourceId: string): Promise<PlatformVideo[]>
   getEmbedUrl(platformVideoId: string): string
 }

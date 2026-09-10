@@ -16,6 +16,10 @@ describe('parseRutubeUrl', () => {
     expect(parseRutubeUrl('https://rutube.ru/channel/23704195/'))
       .toEqual({ kind: 'channel', id: '23704195' })
   })
+  it('распознаёт плейлист', () => {
+    expect(parseRutubeUrl('https://rutube.ru/plst/1442688/'))
+      .toEqual({ kind: 'playlist', id: '1442688' })
+  })
   it('дополняет схему, если ссылку скопировали без https://', () => {
     expect(parseRutubeUrl('rutube.ru/channel/23593353/'))
       .toEqual({ kind: 'channel', id: '23593353' })
