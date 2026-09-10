@@ -5,8 +5,8 @@ import { SafePlayer } from '@/components/SafePlayer/SafePlayer'
 
 type Suggestion = { id: string; title: string; thumbnailUrl: string }
 
-export function WatchClient({ embedUrl, suggestions, initiallyBlocked }: {
-  embedUrl: string; suggestions: Suggestion[]; initiallyBlocked: boolean
+export function WatchClient({ embedUrl, durationSec, suggestions, initiallyBlocked }: {
+  embedUrl: string; durationSec: number; suggestions: Suggestion[]; initiallyBlocked: boolean
 }) {
   const router = useRouter()
   const [ended, setEnded] = useState(false)
@@ -31,7 +31,7 @@ export function WatchClient({ embedUrl, suggestions, initiallyBlocked }: {
     <div className="mx-auto max-w-3xl p-3">
       <button onClick={() => router.push('/')} className="mb-3 rounded-full bg-white px-4 py-1.5 text-sm font-bold shadow">‹ Назад</button>
       {!ended ? (
-        <SafePlayer embedUrl={embedUrl} onEnded={() => setEnded(true)} onTick={onTick} />
+        <SafePlayer embedUrl={embedUrl} durationSec={durationSec} onEnded={() => setEnded(true)} onTick={onTick} />
       ) : (
         <div className="rounded-2xl bg-amber-100 p-5">
           <div className="text-center text-lg font-extrabold text-gray-800">🎉 Видео закончилось!</div>

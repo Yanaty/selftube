@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createHandshake } from './handshake'
+import { formatTime, clampTime } from './time'
 
 /**
  * SafePlayer — изолированный Rutube-плеер для детей (fail-closed).
@@ -17,12 +18,17 @@ import { createHandshake } from './handshake'
  *   - 'player:changeState'  — playback state changed. data.state === 'playing' | 'pause'.
  *                             (NOTE: the paused value is the literal string "pause", NOT "paused".)
  *   - 'player:playComplete' — video (and ads) finished. Drives onEnded().
- *   - 'player:currentTime'  — periodic time update. data.time is seconds (float). Used for rewind seek.
+ *   - 'player:currentTime'  — periodic time update. data: { time, currentTime, duration } (seconds, float).
+ *   - 'player:durationChange' — data: { duration } (seconds). Length becomes known here.
+ *   - 'player:volumeChange'   — data: { volume } in 0..1. volume === 0 means muted.
  * Commands TO the player:
  *   - 'player:play'            data: {}
  *   - 'player:pause'           data: {}
- *   - 'player:mute'            data: {}
+ *   - 'player:mute'            data: {}   — one-way: it only SILENCES the player.
+ *   - 'player:unMute'          data: {}   — the counterpart that brings the sound back.
  *   - 'player:setCurrentTime'  data: { time: <seconds> }   (absolute seek)
+ *   - 'player:hideControls'    data: {}   — hides Rutube's own UI, so the child only ever
+ *                                          sees OUR controls under the click-blocking overlay.
  *
  * Ready-signal choice: Rutube DOES emit a distinct 'player:ready', so we wire onPlayerReady to it.
  * As a defensive fallback we also treat 'player:changeState' as readiness — some player builds
@@ -34,14 +40,20 @@ type Props = {
   embedUrl: string
   onEnded: () => void
   onTick?: (seconds: number) => void
+  /** Длительность из каталога — запасной вариант, пока плеер не прислал свою. */
+  durationSec?: number
 }
 
-export function SafePlayer({ embedUrl, onEnded, onTick }: Props) {
+export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [handshake] = useState(() => createHandshake(4000))
   const [, force] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const currentTimeRef = useRef(0)
+  const [muted, setMuted] = useState(false)
+  const [duration, setDuration] = useState(durationSec)
+  const [position, setPosition] = useState(0)
+  // Пока ребёнок тащит ползунок, показываем его палец, а не приходящие тики плеера.
+  const [scrub, setScrub] = useState<number | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -58,6 +70,9 @@ export function SafePlayer({ embedUrl, onEnded, onTick }: Props) {
       if (data.type === 'player:ready' || data.type === 'player:changeState') {
         handshake.onPlayerReady()
         force((n) => n + 1)
+        // Родной UI Rutube всё равно недоступен из-за оверлея — прячем его, чтобы
+        // ребёнок не тыкал в мёртвую полосу перемотки вместо нашей.
+        send('hideControls')
       }
       if (data.type === 'player:playComplete') onEnded()
       if (data.type === 'player:changeState') {
@@ -65,7 +80,17 @@ export function SafePlayer({ embedUrl, onEnded, onTick }: Props) {
         if (data.data?.state === 'pause') setPlaying(false)
       }
       if (data.type === 'player:currentTime' && typeof data.data?.time === 'number') {
-        currentTimeRef.current = data.data.time
+        setPosition(data.data.time)
+        if (typeof data.data.duration === 'number' && data.data.duration > 0) {
+          setDuration(data.data.duration)
+        }
+      }
+      if (data.type === 'player:durationChange' && typeof data.data?.duration === 'number') {
+        setDuration(data.data.duration)
+      }
+      // Громкость может смениться и без нас (автоплей без звука) — держим кнопку честной.
+      if (data.type === 'player:volumeChange' && typeof data.data?.volume === 'number') {
+        setMuted(data.data.volume === 0)
       }
     }
 
@@ -95,9 +120,26 @@ export function SafePlayer({ embedUrl, onEnded, onTick }: Props) {
     playing ? send('pause') : send('play')
   }
 
-  function rewind10() {
-    const target = Math.max(0, currentTimeRef.current - 10)
+  function toggleMute() {
+    // player:mute только выключает звук; включает обратно отдельная команда player:unMute.
+    send(muted ? 'unMute' : 'mute')
+    setMuted(!muted)
+  }
+
+  function seekTo(time: number) {
+    const target = clampTime(time, duration)
     send('setCurrentTime', { time: target })
+    setPosition(target)
+  }
+
+  function rewind10() {
+    seekTo((scrub ?? position) - 10)
+  }
+
+  function commitScrub() {
+    if (scrub === null) return
+    seekTo(scrub)
+    setScrub(null)
   }
 
   if (handshake.state() === 'failed') {
@@ -121,10 +163,37 @@ export function SafePlayer({ embedUrl, onEnded, onTick }: Props) {
       {/* Transparent overlay intercepts ALL taps on the player: Rutube logo, "related",
           and links stay unreachable. Only our controls drive the player. */}
       <div className="absolute inset-0" onClick={togglePlay} />
-      <div className="absolute bottom-0 left-0 right-0 flex items-center gap-4 bg-gradient-to-t from-black/70 to-transparent p-3 text-2xl text-white">
-        <button onClick={rewind10} aria-label="Назад 10с">⏪</button>
-        <button onClick={togglePlay} aria-label="Пауза/играть">{playing ? '⏸' : '▶️'}</button>
-        <button onClick={() => send('mute')} className="ml-auto" aria-label="Звук">🔊</button>
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
+        <div className="flex items-center gap-2">
+          <span className="w-10 text-xs tabular-nums">{formatTime(scrub ?? position)}</span>
+          <input
+            type="range"
+            aria-label="Перемотка"
+            min={0}
+            max={duration}
+            step={1}
+            disabled={duration <= 0}
+            value={scrub ?? position}
+            onChange={(e) => setScrub(Number(e.target.value))}
+            onPointerUp={commitScrub}
+            onMouseUp={commitScrub}
+            onTouchEnd={commitScrub}
+            onKeyUp={commitScrub}
+            className="h-6 flex-1 accent-orange-500 disabled:opacity-40"
+          />
+          <span className="w-10 text-xs tabular-nums">{formatTime(duration)}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-4 text-2xl">
+          <button onClick={rewind10} aria-label="Назад 10с">⏪</button>
+          <button onClick={togglePlay} aria-label="Пауза/играть">{playing ? '⏸' : '▶️'}</button>
+          <button
+            onClick={toggleMute}
+            className="ml-auto"
+            aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
+        </div>
       </div>
     </div>
   )

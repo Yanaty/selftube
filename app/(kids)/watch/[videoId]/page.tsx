@@ -31,6 +31,7 @@ export default async function WatchPage({ params }: { params: { videoId: string 
   return (
     <WatchClient
       embedUrl={video.embedUrl}
+      durationSec={video.durationSec}
       suggestions={suggestions}
       initiallyBlocked={status.blocked}
     />
