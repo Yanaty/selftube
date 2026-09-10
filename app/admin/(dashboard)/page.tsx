@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requireParent } from '@/lib/session'
 import { listAdminChannels, listAdminManualVideos } from '@/domain/catalog/catalog-service'
 import { addByUrl, syncNow, setVideoHiddenAction, deleteManualVideoAction, deleteChannelAction } from '../actions'
@@ -21,15 +22,20 @@ export default async function AdminCatalog() {
         <div className="divide-y rounded-xl border bg-white">
           {channels.length === 0 ? <p className="p-3 text-sm text-gray-400">Пока нет каналов и плейлистов</p> : channels.map((c) => (
             <div key={c.id} className="flex items-center gap-3 p-3">
-              <img src={c.thumbnailUrl || '/placeholder.png'} alt="" className="h-12 w-20 rounded-lg bg-gray-100 object-cover" />
+              <Link href={`/admin/source/${c.id}`} className="shrink-0">
+                <img src={c.thumbnailUrl || '/placeholder.png'} alt="" className="h-12 w-20 rounded-lg bg-gray-100 object-cover" />
+              </Link>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{c.title}</span>
+                  <Link href={`/admin/source/${c.id}`} className="text-sm font-bold hover:underline">{c.title}</Link>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${c.kind === 'PLAYLIST' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
                     {c.kind === 'PLAYLIST' ? 'Плейлист' : 'Канал'}
                   </span>
                 </div>
-                <div className="text-xs text-gray-500">{c._count.videos} видео · {c.lastSyncedAt ? `синхр. ${c.lastSyncedAt.toLocaleString('ru')}` : 'не синхронизирован'}</div>
+                <div className="text-xs text-gray-500">
+                  <Link href={`/admin/source/${c.id}`} className="hover:underline">{c._count.videos} видео</Link>
+                  {' · '}{c.lastSyncedAt ? `синхр. ${c.lastSyncedAt.toLocaleString('ru')}` : 'не синхронизирован'}
+                </div>
               </div>
               <form action={deleteChannelAction}><input type="hidden" name="channelId" value={c.id} /><button className="text-xs text-red-600">Удалить</button></form>
             </div>
@@ -58,6 +64,7 @@ export default async function AdminCatalog() {
                 <form action={setVideoHiddenAction}>
                   <input type="hidden" name="videoId" value={v.id} />
                   <input type="hidden" name="hidden" value={v.hidden ? '0' : '1'} />
+                  <input type="hidden" name="path" value="/admin" />
                   <button className="text-xs font-semibold text-blue-600">{v.hidden ? 'Показать' : 'Скрыть'}</button>
                 </form>
                 <form action={deleteManualVideoAction}>

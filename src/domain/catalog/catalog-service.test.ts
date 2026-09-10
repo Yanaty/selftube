@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import {
   addVideoByUrl, addSourceByUrl, listChildCatalog, hideVideo, deleteChannel,
   listChildCatalogPage, setVideoHidden, deleteManualVideo, listAdminManualVideos,
+  getAdminSource, listAdminSourceVideos,
 } from './catalog-service'
 import { RutubeAdapter } from '@/domain/platform/rutube/adapter'
 
@@ -219,5 +220,65 @@ describe('deleteManualVideo', () => {
 
     await expect(deleteManualVideo(ACC, fromChannel.id)).rejects.toThrow()
     expect(await listChildCatalog(ACC)).toHaveLength(1)
+  })
+})
+
+describe('страница источника в админке', () => {
+  const channelAdapter = () => fakeAdapter({
+    'https://rutube.ru/api/video/person/777/?page=1': {
+      results: [
+        { id: 'a', title: 'Щенячий патруль 1 серия', duration: 1, thumbnail_url: 't', author: { id: 777, name: 'Канал X' } },
+        { id: 'b', title: 'Щенячий патруль 2 серия', duration: 2, thumbnail_url: 't' },
+        { id: 'c', title: 'Синий трактор', duration: 3, thumbnail_url: 't' },
+      ],
+      has_next: false,
+    },
+  })
+
+  it('отдаёт источник по id и только его видео', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', channelAdapter())
+    const adapter2 = fakeAdapter({
+      'https://rutube.ru/api/video/v9/': { id: 'v9', title: 'Ручное', duration: 1, thumbnail_url: 't' },
+    })
+    await addVideoByUrl(ACC, 'https://rutube.ru/video/v9/', adapter2)
+
+    expect((await getAdminSource(ACC, source.id))!.title).toBe('Канал X')
+    const page = await listAdminSourceVideos(ACC, source.id, { offset: 0, limit: 50 })
+    expect(page.total).toBe(3)
+    expect(page.items.map((v) => v.platformVideoId).sort()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('показывает скрытые видео и считает их', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', channelAdapter())
+    const before = await listAdminSourceVideos(ACC, source.id, { offset: 0, limit: 50 })
+    await setVideoHidden(ACC, before.items[0].id, true)
+
+    const after = await listAdminSourceVideos(ACC, source.id, { offset: 0, limit: 50 })
+    expect(after.hidden).toBe(1)
+    expect(after.items).toHaveLength(3) // скрытое остаётся в списке — его надо видеть, чтобы вернуть
+    expect(after.items.find((v) => v.id === before.items[0].id)!.hidden).toBe(true)
+  })
+
+  it('ищет по названию без учёта регистра', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', channelAdapter())
+    const page = await listAdminSourceVideos(ACC, source.id, { offset: 0, limit: 50, query: 'ЩЕНЯЧИЙ' })
+    expect(page.total).toBe(2)
+    expect(page.items.map((v) => v.platformVideoId).sort()).toEqual(['a', 'b'])
+  })
+
+  it('режет на страницы', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', channelAdapter())
+    const first = await listAdminSourceVideos(ACC, source.id, { offset: 0, limit: 2 })
+    const second = await listAdminSourceVideos(ACC, source.id, { offset: 2, limit: 2 })
+    expect(first.items).toHaveLength(2)
+    expect(second.items).toHaveLength(1)
+    expect(first.total).toBe(3)
+  })
+
+  it('не отдаёт источник чужого аккаунта', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', channelAdapter())
+    expect(await getAdminSource('other-account', source.id)).toBeNull()
+    const page = await listAdminSourceVideos('other-account', source.id, { offset: 0, limit: 50 })
+    expect(page.total).toBe(0)
   })
 })

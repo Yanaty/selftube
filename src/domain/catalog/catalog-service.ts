@@ -138,6 +138,36 @@ export async function listAdminManualVideos(accountId: string) {
   return db.video.findMany({ where: { accountId, sourceType: 'MANUAL' }, orderBy: { addedAt: 'desc' } })
 }
 
+export async function getAdminSource(accountId: string, sourceId: string) {
+  return db.channel.findFirst({ where: { id: sourceId, accountId } })
+}
+
+/**
+ * Видео одного источника для админки — со скрытыми вместе, иначе спрятанную серию
+ * не вернуть обратно.
+ *
+ * Фильтрация по названию идёт в JS, а не в SQL: LIKE в SQLite различает регистр
+ * кириллицы, и поиск по «ЩЕНЯЧИЙ» ничего бы не нашёл. Источник даже на несколько
+ * тысяч видео читается за десятки миллисекунд.
+ */
+export async function listAdminSourceVideos(
+  accountId: string,
+  sourceId: string,
+  { offset, limit, query = '' }: { offset: number; limit: number; query?: string },
+) {
+  const all = await db.video.findMany({
+    where: { accountId, channelId: sourceId },
+    orderBy: [{ publishedAt: 'desc' }, { addedAt: 'desc' }],
+  })
+  const q = query.trim().toLowerCase()
+  const filtered = q ? all.filter((v) => v.title.toLowerCase().includes(q)) : all
+  return {
+    total: filtered.length,
+    hidden: filtered.filter((v) => v.hidden).length,
+    items: filtered.slice(offset, offset + limit),
+  }
+}
+
 export async function deleteChannel(accountId: string, channelId: string) {
   await db.video.deleteMany({ where: { accountId, channelId } })
   await db.channel.deleteMany({ where: { id: channelId, accountId } })

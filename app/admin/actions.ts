@@ -31,7 +31,9 @@ export async function syncNow() {
 export async function setVideoHiddenAction(formData: FormData) {
   const parent = await requireParent()
   await setVideoHidden(parent.accountId, String(formData.get('videoId')), formData.get('hidden') === '1')
-  revalidatePath('/admin')
+  // Кнопка живёт и в каталоге, и на странице источника — обновляем ту, откуда пришли.
+  const from = String(formData.get('path') ?? '/admin')
+  revalidatePath(from.startsWith('/admin') ? from : '/admin')
 }
 
 export async function deleteManualVideoAction(formData: FormData) {
