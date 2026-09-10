@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireParent } from '@/lib/session'
 import { getAdminSource, listAdminSourceVideos } from '@/domain/catalog/catalog-service'
-import { setVideoHiddenAction } from '../../../actions'
+import { setVideoHiddenAction, setFoundHiddenAction } from '../../../actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +54,25 @@ export default async function SourceVideosPage({
         <button className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white">Найти</button>
         {query ? <Link href={path} className="self-center text-xs text-gray-500 hover:underline">Сбросить</Link> : null}
       </form>
+
+      {query && total > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed bg-gray-50 p-3 text-sm">
+          <span className="text-gray-600">Со всеми найденными ({total}):</span>
+          <form action={setFoundHiddenAction}>
+            <input type="hidden" name="sourceId" value={source.id} />
+            <input type="hidden" name="q" value={query} />
+            <input type="hidden" name="hidden" value="1" />
+            <button className="rounded-lg bg-gray-700 px-3 py-1.5 text-xs font-bold text-white">Скрыть все</button>
+          </form>
+          <form action={setFoundHiddenAction}>
+            <input type="hidden" name="sourceId" value={source.id} />
+            <input type="hidden" name="q" value={query} />
+            <input type="hidden" name="hidden" value="0" />
+            <button className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700">Показать все</button>
+          </form>
+          <span className="text-xs text-gray-400">Действие обратимо</span>
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">Ничего не нашлось</p>

@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import {
   addVideoByUrl, addSourceByUrl, listChildCatalog, hideVideo, deleteChannel,
   listChildCatalogPage, setVideoHidden, deleteManualVideo, listAdminManualVideos,
-  getAdminSource, listAdminSourceVideos,
+  getAdminSource, listAdminSourceVideos, setFoundVideosHidden,
 } from './catalog-service'
 import { RutubeAdapter } from '@/domain/platform/rutube/adapter'
 
@@ -280,5 +280,60 @@ describe('страница источника в админке', () => {
     expect(await getAdminSource('other-account', source.id)).toBeNull()
     const page = await listAdminSourceVideos('other-account', source.id, { offset: 0, limit: 50 })
     expect(page.total).toBe(0)
+  })
+})
+
+describe('setFoundVideosHidden — массовое скрытие найденного', () => {
+  const adapter = () => fakeAdapter({
+    'https://rutube.ru/api/video/person/777/?page=1': {
+      results: [
+        { id: 'a', title: 'Щенячий патруль 1 серия', duration: 1, thumbnail_url: 't', author: { id: 777, name: 'Канал X' } },
+        { id: 'b', title: 'Щенячий патруль 2 серия', duration: 2, thumbnail_url: 't' },
+        { id: 'c', title: 'Синий трактор', duration: 3, thumbnail_url: 't' },
+      ],
+      has_next: false,
+    },
+  })
+
+  it('скрывает только найденное и возвращает число затронутых', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter())
+    const n = await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: true })
+    expect(n).toBe(2)
+
+    const catalog = await listChildCatalog(ACC)
+    expect(catalog.map((v) => v.platformVideoId)).toEqual(['c'])
+  })
+
+  it('возвращает найденное обратно', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter())
+    await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: true })
+    expect(await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: false })).toBe(2)
+    expect(await listChildCatalog(ACC)).toHaveLength(3)
+  })
+
+  it('не считает те, что уже в нужном состоянии', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter())
+    await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: true })
+    expect(await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: true })).toBe(0)
+  })
+
+  it('без запроса отказывается — иначе одним кликом можно скрыть весь канал', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter())
+    await expect(setFoundVideosHidden(ACC, source.id, { query: '  ', hidden: true })).rejects.toThrow()
+    expect(await listChildCatalog(ACC)).toHaveLength(3)
+  })
+
+  it('не трогает видео чужого источника и чужого аккаунта', async () => {
+    const source = await addSourceByUrl(ACC, 'https://rutube.ru/channel/777/', adapter())
+    const manual = fakeAdapter({
+      'https://rutube.ru/api/video/z1/': { id: 'z1', title: 'Щенячий патруль отдельно', duration: 1, thumbnail_url: 't' },
+    })
+    await addVideoByUrl(ACC, 'https://rutube.ru/video/z1/', manual)
+
+    await setFoundVideosHidden(ACC, source.id, { query: 'щенячий', hidden: true })
+    const catalog = await listChildCatalog(ACC)
+    expect(catalog.map((v) => v.platformVideoId).sort()).toEqual(['c', 'z1'])
+
+    expect(await setFoundVideosHidden('other-account', source.id, { query: 'щенячий', hidden: true })).toBe(0)
   })
 })

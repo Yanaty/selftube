@@ -168,6 +168,35 @@ export async function listAdminSourceVideos(
   }
 }
 
+/**
+ * Массово скрыть или вернуть найденное внутри источника: в канале на тысячу видео
+ * отсеивать по одному невозможно.
+ *
+ * Запрос обязателен намеренно — иначе одним кликом скрывался бы весь канал.
+ * Возвращает число реально изменённых видео (те, что уже в нужном состоянии, не
+ * считаются).
+ */
+export async function setFoundVideosHidden(
+  accountId: string,
+  sourceId: string,
+  { query, hidden }: { query: string; hidden: boolean },
+): Promise<number> {
+  const q = query.trim().toLowerCase()
+  if (!q) throw new Error('Массовое скрытие работает только по поисковому запросу')
+
+  const all = await db.video.findMany({
+    where: { accountId, channelId: sourceId },
+    select: { id: true, title: true, hidden: true },
+  })
+  const ids = all
+    .filter((v) => v.hidden !== hidden && v.title.toLowerCase().includes(q))
+    .map((v) => v.id)
+  if (ids.length === 0) return 0
+
+  await db.video.updateMany({ where: { accountId, id: { in: ids } }, data: { hidden } })
+  return ids.length
+}
+
 export async function deleteChannel(accountId: string, channelId: string) {
   await db.video.deleteMany({ where: { accountId, channelId } })
   await db.channel.deleteMany({ where: { id: channelId, accountId } })

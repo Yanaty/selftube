@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireParent } from '@/lib/session'
 import { adapterForUrl, adapterForPlatform } from '@/domain/platform/registry'
-import { addVideoByUrl, addSourceByUrl, setVideoHidden, deleteManualVideo, deleteChannel } from '@/domain/catalog/catalog-service'
+import { addVideoByUrl, addSourceByUrl, setVideoHidden, setFoundVideosHidden, deleteManualVideo, deleteChannel } from '@/domain/catalog/catalog-service'
 import { syncAllChannels } from '@/domain/sync/sync-service'
 
 export async function addByUrl(_prev: unknown, formData: FormData) {
@@ -34,6 +34,16 @@ export async function setVideoHiddenAction(formData: FormData) {
   // Кнопка живёт и в каталоге, и на странице источника — обновляем ту, откуда пришли.
   const from = String(formData.get('path') ?? '/admin')
   revalidatePath(from.startsWith('/admin') ? from : '/admin')
+}
+
+export async function setFoundHiddenAction(formData: FormData) {
+  const parent = await requireParent()
+  const sourceId = String(formData.get('sourceId'))
+  await setFoundVideosHidden(parent.accountId, sourceId, {
+    query: String(formData.get('q') ?? ''),
+    hidden: formData.get('hidden') === '1',
+  })
+  revalidatePath(`/admin/source/${sourceId}`)
 }
 
 export async function deleteManualVideoAction(formData: FormData) {
