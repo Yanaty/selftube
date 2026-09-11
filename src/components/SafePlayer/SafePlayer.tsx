@@ -44,6 +44,8 @@ type Props = {
   durationSec?: number
 }
 
+const CONTROLS_HIDE_MS = 3000
+
 export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [handshake] = useState(() => createHandshake(4000))
@@ -54,6 +56,10 @@ export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props
   const [position, setPosition] = useState(0)
   // Пока ребёнок тащит ползунок, показываем его палец, а не приходящие тики плеера.
   const [scrub, setScrub] = useState<number | null>(null)
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const [cssFullscreen, setCssFullscreen] = useState(false)
+  const surfaceRef = useRef<HTMLDivElement>(null)
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,6 +115,53 @@ export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props
     return () => clearInterval(id)
   }, [playing, onTick])
 
+  // Панель мешает смотреть, поэтому во время воспроизведения она уходит сама.
+  // На паузе и пока тащат ползунок — остаётся: там она и нужна.
+  const keepControls = !playing || scrub !== null
+
+  useEffect(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current)
+    if (keepControls) {
+      setControlsVisible(true)
+      return
+    }
+    hideTimer.current = setTimeout(() => setControlsVisible(false), CONTROLS_HIDE_MS)
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current)
+    }
+  }, [keepControls, controlsVisible])
+
+  function nudgeControls() {
+    setControlsVisible(true)
+  }
+
+  useEffect(() => {
+    // Браузер может выйти из полного экрана сам (Esc, жест) — не держим свой флаг.
+    const onChange = () => setCssFullscreen(document.fullscreenElement === surfaceRef.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  function toggleFullscreen() {
+    const el = surfaceRef.current
+    // Разворачиваем СВОЙ контейнер, а не плеер: команда player:enterFullscreen
+    // подняла бы родной UI Rutube поверх нашего оверлея и сломала изоляцию.
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.()
+      setCssFullscreen(false)
+      return
+    }
+    if (el && document.fullscreenEnabled && typeof el.requestFullscreen === 'function') {
+      // В разных браузерах метод возвращает то промис, то ничего — нормализуем.
+      Promise.resolve(el.requestFullscreen()).catch(() => setCssFullscreen(true))
+      setCssFullscreen(true)
+      return
+    }
+    // iPhone разворачивать произвольные элементы не умеет — растягиваем на весь
+    // экран средствами CSS.
+    setCssFullscreen((v) => !v)
+  }
+
   function send(method: string, payload: Record<string, unknown> = {}) {
     iframeRef.current?.contentWindow?.postMessage(
       JSON.stringify({ type: `player:${method}`, data: payload }),
@@ -136,6 +189,10 @@ export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props
     seekTo((scrub ?? position) - 10)
   }
 
+  function forward10() {
+    seekTo((scrub ?? position) + 10)
+  }
+
   function commitScrub() {
     if (scrub === null) return
     seekTo(scrub)
@@ -151,48 +208,82 @@ export function SafePlayer({ embedUrl, onEnded, onTick, durationSec = 0 }: Props
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: '16 / 9' }}>
-      <iframe
-        ref={iframeRef}
-        src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}`}
-        className="absolute inset-0 h-full w-full"
-        sandbox="allow-scripts allow-same-origin"
-        allow="fullscreen; encrypted-media"
-        referrerPolicy="strict-origin-when-cross-origin"
-      />
-      {/* Transparent overlay intercepts ALL taps on the player: Rutube logo, "related",
-          and links stay unreachable. Only our controls drive the player. */}
-      <div className="absolute inset-0" onClick={togglePlay} />
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
-        <div className="flex items-center gap-2">
-          <span className="w-10 text-xs tabular-nums">{formatTime(scrub ?? position)}</span>
-          <input
-            type="range"
-            aria-label="Перемотка"
-            min={0}
-            max={duration}
-            step={1}
-            disabled={duration <= 0}
-            value={scrub ?? position}
-            onChange={(e) => setScrub(Number(e.target.value))}
-            onPointerUp={commitScrub}
-            onMouseUp={commitScrub}
-            onTouchEnd={commitScrub}
-            onKeyUp={commitScrub}
-            className="h-6 flex-1 accent-orange-500 disabled:opacity-40"
-          />
-          <span className="w-10 text-xs tabular-nums">{formatTime(duration)}</span>
-        </div>
-        <div className="mt-1 flex items-center gap-4 text-2xl">
-          <button onClick={rewind10} aria-label="Назад 10с">⏪</button>
-          <button onClick={togglePlay} aria-label="Пауза/играть">{playing ? '⏸' : '▶️'}</button>
-          <button
-            onClick={toggleMute}
-            className="ml-auto"
-            aria-label={muted ? 'Включить звук' : 'Выключить звук'}
-          >
-            {muted ? '🔇' : '🔊'}
-          </button>
+    <div
+      ref={surfaceRef}
+      data-testid="player-surface"
+      onPointerMove={nudgeControls}
+      onPointerDown={nudgeControls}
+      className={
+        cssFullscreen
+          ? 'fixed inset-0 z-50 flex items-center justify-center bg-black'
+          : 'relative w-full overflow-hidden rounded-2xl bg-black'
+      }
+      style={cssFullscreen ? undefined : { aspectRatio: '16 / 9' }}
+    >
+      <div className="relative h-full w-full" style={cssFullscreen ? { aspectRatio: '16 / 9' } : undefined}>
+        <iframe
+          ref={iframeRef}
+          src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}`}
+          className="absolute inset-0 h-full w-full"
+          sandbox="allow-scripts allow-same-origin"
+          allow="fullscreen; encrypted-media"
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+        {/* Transparent overlay intercepts ALL taps on the player: Rutube logo, "related",
+            and links stay unreachable. Only our controls drive the player. */}
+        <div
+          className="absolute inset-0"
+          onClick={() => {
+            // Первый тап по спрятанной панели только возвращает её — иначе ребёнок
+            // случайно ставит видео на паузу, пытаясь добраться до кнопок.
+            if (!controlsVisible) {
+              nudgeControls()
+              return
+            }
+            togglePlay()
+          }}
+        />
+        <div
+          data-testid="player-controls"
+          data-visible={String(controlsVisible)}
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white transition-opacity duration-300 ${
+            controlsVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-10 text-xs tabular-nums">{formatTime(scrub ?? position)}</span>
+            <input
+              type="range"
+              aria-label="Перемотка"
+              min={0}
+              max={duration}
+              step={1}
+              disabled={duration <= 0}
+              value={scrub ?? position}
+              onChange={(e) => setScrub(Number(e.target.value))}
+              onPointerUp={commitScrub}
+              onMouseUp={commitScrub}
+              onTouchEnd={commitScrub}
+              onKeyUp={commitScrub}
+              className="h-6 flex-1 accent-orange-500 disabled:opacity-40"
+            />
+            <span className="w-10 text-xs tabular-nums">{formatTime(duration)}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-4 text-2xl">
+            <button onClick={rewind10} aria-label="Назад 10 секунд">⏪</button>
+            <button onClick={togglePlay} aria-label="Пауза/играть">{playing ? '⏸' : '▶️'}</button>
+            <button onClick={forward10} aria-label="Вперёд 10 секунд">⏩</button>
+            <button
+              onClick={toggleMute}
+              className="ml-auto"
+              aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+            >
+              {muted ? '🔇' : '🔊'}
+            </button>
+            <button onClick={toggleFullscreen} aria-label={cssFullscreen ? 'Выйти из полного экрана' : 'Полный экран'}>
+              {cssFullscreen ? '🗗' : '⛶'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
