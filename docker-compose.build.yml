@@ -1,0 +1,5 @@
+# Оверлей для локальной сборки образа вместо скачивания из реестра:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  app:
+    build: .

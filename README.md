@@ -73,7 +73,13 @@ npm run dev
 **1. Домен.** A-запись домена должна указывать на IP сервера. Проверить:
 `dig +short ваш-домен` — должен вернуться IP VPS.
 
-**2. На сервере:**
+**2. Образ.** Его собирает GitHub Actions и кладёт в GitHub Container Registry —
+на VPS с 1 ГБ памяти своя сборка не помещается. Репозиторий приватный, значит и
+образ приватный, поэтому серверу нужен доступ: в GitHub создайте токен
+(Settings → Developer settings → Personal access tokens → classic) с единственным
+правом **read:packages**.
+
+**3. На сервере:**
 
 ```bash
 # Docker (Ubuntu/Debian)
@@ -81,17 +87,25 @@ curl -fsSL https://get.docker.com | sh
 
 git clone https://github.com/Yanaty/selftube.git && cd selftube
 cp .env.deploy.example .env && nano .env      # домен, почта, пароль родителя
-docker compose up -d --build
+
+echo ВАШ_ТОКЕН | docker login ghcr.io -u ВАШ_ЛОГИН --password-stdin
+docker compose pull && docker compose up -d
 ```
 
-Первый запуск занимает несколько минут: собирается образ, создаётся схема базы,
-заводится аккаунт родителя, Caddy получает сертификат. Смотреть за процессом:
+Первый запуск занимает минуту: скачивается образ, создаётся схема базы, заводится
+аккаунт родителя, Caddy получает сертификат. Смотреть за процессом:
 `docker compose logs -f`.
 
-**3. Обновление** после новых коммитов:
+**4. Обновление** после новых коммитов — дождаться зелёной сборки в Actions и:
 
 ```bash
-git pull && docker compose up -d --build
+docker compose pull && docker compose up -d
+```
+
+Собрать образ прямо на сервере, если очень нужно (потребуется ~2 ГБ памяти):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
 База лежит в отдельном Docker-томе и пересборку переживает. Бэкап — обычное
@@ -136,9 +150,10 @@ put dev.db /data/dev.db
 ### GitHub Actions
 
 - **CI** (`.github/workflows/ci.yml`) — на каждый пуш: типы, тесты, сборка.
-- **Deploy** (`.github/workflows/deploy.yml`) — пуш в `main` выкатывает на Fly.
-  Нужен секрет `FLY_API_TOKEN` в Settings → Secrets and variables → Actions,
-  получить: `fly tokens create deploy`.
+- **Docker image** (`.github/workflows/docker.yml`) — пуш в `main` собирает образ
+  и кладёт его в `ghcr.io/yanaty/selftube:latest`. Секретов не требует: работает
+  на встроенном `GITHUB_TOKEN`. Кроме `latest` ставится тег с хешем коммита —
+  на него можно откатиться через `APP_IMAGE` в `.env`.
 
 ### Что сделать сразу после деплоя
 

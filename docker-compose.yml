@@ -4,10 +4,14 @@
 #
 # Первый запуск:
 #   cp .env.deploy.example .env   # и заполнить
-#   docker compose up -d --build
+#   docker login ghcr.io          # образ приватный, как и репозиторий
+#   docker compose pull && docker compose up -d
+#
+# Образ собирает GitHub Actions — на маленьком VPS своя сборка не помещается в
+# память. Собрать локально: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 services:
   app:
-    build: .
+    image: ${APP_IMAGE:-ghcr.io/yanaty/selftube:latest}
     restart: unless-stopped
     environment:
       # База — файл на диске Docker-тома, переживает пересборку и перезапуск.
