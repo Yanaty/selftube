@@ -1,9 +1,12 @@
 import './globals.css'
 import type { ReactNode } from 'react'
-import { startScheduler } from '@/lib/scheduler'
 import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker'
 
-if (typeof window === 'undefined') startScheduler()
+// Автосинхронизация намеренно выключена: каталог обновляется кнопкой
+// «Синхронизировать» в админке. Код планировщика сохранён в src/lib/scheduler.ts —
+// чтобы включить обратно, достаточно раскомментировать эти две строки.
+// import { startScheduler } from '@/lib/scheduler'
+// if (typeof window === 'undefined') startScheduler()
 
 export const metadata = {
   title: 'Мультики',

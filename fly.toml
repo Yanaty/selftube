@@ -18,10 +18,11 @@ primary_region = "waw"
   internal_port = 8080
   force_https = true
   auto_start_machines = true
-  # Машину не усыпляем: планировщик синхронизации живёт внутри процесса и на
-  # спящей машине не сработает.
-  auto_stop_machines = false
-  min_machines_running = 1
+  # Автосинхронизации нет, ничего фонового в процессе не крутится — машина
+  # спокойно засыпает без запросов и просыпается на первый же. Так дешевле.
+  # Если включите планировщик из src/lib/scheduler.ts, верните false и 1.
+  auto_stop_machines = true
+  min_machines_running = 0
 
 [[vm]]
   size = "shared-cpu-1x"
