@@ -1,0 +1,9 @@
+{
+	# Адрес для писем Let's Encrypt об истечении сертификата.
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}

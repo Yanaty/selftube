@@ -1,0 +1,43 @@
+# Развёртывание на обычном VPS: наше приложение + Caddy, который сам получает и
+# продлевает сертификат Let's Encrypt. HTTPS обязателен — без него приложение не
+# устанавливается на телефон как PWA.
+#
+# Первый запуск:
+#   cp .env.deploy.example .env   # и заполнить
+#   docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # База — файл на диске Docker-тома, переживает пересборку и перезапуск.
+      DATABASE_URL: file:/data/dev.db
+      SEED_PARENT_EMAIL: ${SEED_PARENT_EMAIL}
+      SEED_PARENT_PASSWORD: ${SEED_PARENT_PASSWORD}
+    volumes:
+      - app-data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Здесь Caddy хранит выданные сертификаты — без тома он выпрашивал бы их
+      # заново на каждый перезапуск и упёрся бы в лимиты Let's Encrypt.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:
