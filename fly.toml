@@ -1,0 +1,28 @@
+# Конфигурация Fly.io. Имя приложения и регион поменяйте под себя:
+# fly launch --no-deploy  создаст их сам, либо отредактируйте руками.
+app = "multiki"
+primary_region = "waw"
+
+[build]
+
+[env]
+  PORT = "8080"
+  DATABASE_URL = "file:/data/dev.db"
+
+# Постоянный диск: без него SQLite-база стиралась бы при каждом деплое.
+[mounts]
+  source = "multiki_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_start_machines = true
+  # Машину не усыпляем: планировщик синхронизации живёт внутри процесса и на
+  # спящей машине не сработает.
+  auto_stop_machines = false
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

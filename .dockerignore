@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.idea
+.vscode
+docs
+*.db
+.env
+*.tsbuildinfo
+.DS_Store

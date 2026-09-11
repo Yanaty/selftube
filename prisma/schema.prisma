@@ -27,7 +27,10 @@ model Parent {
 }
 
 model Session {
-  id        String   @id @default(cuid())
+  // id — это и есть токен из куки, его выдаёт newSessionToken() (32 случайных
+  // байта). Раньше здесь был @default(cuid()): предсказуемый идентификатор в роли
+  // секрета.
+  id        String   @id
   parentId  String
   expiresAt DateTime
   parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
