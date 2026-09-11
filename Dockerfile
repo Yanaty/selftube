@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+# Схема и конфиг нужны до установки: postinstall запускает prisma generate, а без
+# схемы он падает и вместе с собой роняет весь npm ci.
+COPY prisma ./prisma
+COPY prisma.config.mjs ./prisma.config.mjs
 RUN npm ci
 
 COPY . .
