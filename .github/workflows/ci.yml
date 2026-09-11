@@ -18,6 +18,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Клиент Prisma генерируется в postinstall, но повторим явно: шаг дешёвый,
+      # а падение без типов выглядит как тридцать несвязанных ошибок.
+      - run: npx prisma generate
       - run: npx prisma db push
       - run: npx tsc --noEmit
       - run: npm test
