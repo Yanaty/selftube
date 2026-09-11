@@ -3,7 +3,7 @@
 # всё остальное вместе взятое.
 
 # ---------- стадия 1: сборка ----------
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 # Нативный better-sqlite3 собирается из исходников, отсюда тулчейн.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,7 +25,7 @@ RUN npx prisma generate && npm run build
 RUN npm prune --omit=dev
 
 # ---------- стадия 2: рантайм ----------
-FROM node:20-slim AS runner
+FROM node:24-slim AS runner
 
 # openssl нужен движкам Prisma; компилятор здесь уже не нужен.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
