@@ -31,7 +31,6 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
-      ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Здесь Caddy хранит выданные сертификаты — без тома он выпрашивал бы их
