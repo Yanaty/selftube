@@ -3,7 +3,7 @@
 # что у Fly есть. Альтернативы: ams, cdg, arn, lhr. Актуальный список всегда
 # отдаёт `fly platform regions` — Варшавы (waw) у Fly, вопреки распространённому
 # заблуждению, нет.
-app = "multiki"
+app = "selftube"
 primary_region = "fra"
 
 [build]
