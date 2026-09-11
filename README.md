@@ -74,8 +74,9 @@ Vercel потребовал бы переезда на сетевую базу. 
 запросов и просыпается на первый.
 
 ```bash
-fly launch --no-deploy          # имя приложения и регион; fly.toml уже в репозитории
-fly volumes create multiki_data --size 1    # постоянный диск под базу
+fly apps create ваше-имя        # имя глобально уникально; fly.toml уже в репозитории
+# регион в fly.toml — fra (Франкфурт); список доступных: fly platform regions
+fly volumes create multiki_data --size 1 --region fra   # диск в том же регионе, что и машина
 fly secrets set SEED_PARENT_EMAIL=вы@почта SEED_PARENT_PASSWORD=длинный-пароль
 fly deploy
 ```
