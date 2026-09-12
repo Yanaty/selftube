@@ -7,7 +7,10 @@
 # 	email ваша@почта
 # }
 
-{$DOMAIN} {
+# Запасное значение не для красоты: при пустом DOMAIN имя сайта исчезает, Caddy
+# принимает скобку за блок глобальных настроек и падает с загадочным
+# «unrecognized global option: encode». С localhost он хотя бы запустится.
+{$DOMAIN:localhost} {
 	encode zstd gzip
 	reverse_proxy app:8080
 }
